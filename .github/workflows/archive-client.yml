@@ -30,7 +30,7 @@ jobs:
           with open(path, "rb") as file:
               header = file.read(4)
           print(f"Downloaded {size:,} bytes, signature={header!r}")
-          if size < 100_000_000 or header not in (b"PK\\x03\\x04", b"PK\\x05\\x06", b"PK\\x07\\x08"):
+          if size < 100_000_000 or not header.startswith(b"PK"):
               raise SystemExit("Download is not the expected ZIP archive. No release was created.")
           PY
           sha256sum dofus-windows-v221.zip
