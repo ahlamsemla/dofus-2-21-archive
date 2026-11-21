@@ -18,9 +18,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 4 --retry-delay 10 --retry-all-errors \
+          curl --location --retry 1 --retry-delay 3 --retry-all-errors \
             --connect-timeout 30 --max-time 2400 \
             --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36" \
+            --referer "https://www.gamefront.com/games/dofus/file/dofus-v2-21-client" \
             --output dofus-windows-v221.zip \
             "https://osiris.gamefront.com/gamefront/files/dofus/dofus-windows-v221.zip?X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=128c88f9f41809e0ccee20c79f28c254%2F20261121%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20261121T010420Z&X-Amz-SignedHeaders=host&X-Amz-Expires=3600&X-Amz-Signature=30ec048393d33c420cbb8bd27054780f2f3c01c472102df7dad3cd27a5377e24"
           python3 - <<'PY'
@@ -30,6 +31,8 @@ jobs:
           with open(path, "rb") as file:
               header = file.read(4)
           print(f"Downloaded {size:,} bytes, signature={header!r}")
+          if size < 100_000_000:
+              print("Small server response:", open(path, "rb").read(1500).decode("utf-8", errors="replace"))
           if size < 100_000_000 or not header.startswith(b"PK"):
               raise SystemExit("Download is not the expected ZIP archive. No release was created.")
           PY
