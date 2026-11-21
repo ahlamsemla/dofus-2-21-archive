@@ -1,0 +1,52 @@
+name: Download and publish DOFUS 2.21 client
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/archive-client.yml
+
+permissions:
+  contents: write
+
+jobs:
+  download-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Download archive from GameFront
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 4 --retry-delay 10 --retry-all-errors \
+            --connect-timeout 30 --max-time 2400 \
+            --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36" \
+            --output dofus-windows-v221.zip \
+            "https://www.gamefront.com/games/dofus/file/dofus-v2-21-client/download"
+          python3 - <<'PY'
+          import os
+          path = "dofus-windows-v221.zip"
+          size = os.path.getsize(path)
+          with open(path, "rb") as file:
+              header = file.read(4)
+          print(f"Downloaded {size:,} bytes, signature={header!r}")
+          if size < 100_000_000 or header not in (b"PK\\x03\\x04", b"PK\\x05\\x06", b"PK\\x07\\x08"):
+              raise SystemExit("Download is not the expected ZIP archive. No release was created.")
+          PY
+          sha256sum dofus-windows-v221.zip
+
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh release view "v2.21-archive" >/dev/null 2>&1; then
+            gh release upload "v2.21-archive" dofus-windows-v221.zip --clobber
+          else
+            gh release create "v2.21-archive" dofus-windows-v221.zip \
+              --title "DOFUS 2.21 client archive" \
+              --notes "Historical client archive sourced from GameFront: https://www.gamefront.com/games/dofus/file/dofus-v2-21-client. Unofficial; not affiliated with Ankama." \
+              --latest=false
+          fi
